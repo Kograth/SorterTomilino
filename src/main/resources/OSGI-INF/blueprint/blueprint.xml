@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.0.0"
+           xmlns:jaxws="http://cxf.apache.org/blueprint/jaxws"
+           xmlns:cxf="http://cxf.apache.org/blueprint/core"
+           xmlns:camel="http://camel.apache.org/schema/blueprint"
+           xmlns:camelcxf="http://camel.apache.org/schema/blueprint/cxf"
+           xsi:schemaLocation="
+             http://www.osgi.org/xmlns/blueprint/v1.0.0 http://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd
+             http://cxf.apache.org/blueprint/jaxws http://cxf.apache.org/schemas/blueprint/jaxws.xsd
+             http://cxf.apache.org/blueprint/core http://cxf.apache.org/schemas/blueprint/core.xsd">
+  
+    <bean id="ProxySorterBuilder" class="ru.cse.proxysorter.ProxySorterBuilder"/>
+    <bean id="ProxySorterBuilderActiveMQ" class="ru.cse.proxysorter.ProxySorterBuilderActiveMQ"/>
+    <bean id="length-DecoderSorterTlg" class="ru.cse.proxysorter.NettyCodecs.SorterCodecFactory" factory-method="createDecoderSorterTlg"/>
+    <bean id="length-EncoderSorterTlg" class="ru.cse.proxysorter.NettyCodecs.SorterCodecFactory" factory-method="createEncoderSorterTlg"/>
+    <!--<bean id="nettyHttpBootstrapOptions" claa = "org.apache.camel.component.netty4.NettyServerBootstrapConfiguration">-->
+
+        <!--<property name="connectionTimeout" value="20000"/>-->
+        <!--<property name="remoteAddress" value="49998"/>-->
+    <!--</bean>-->
+
+
+    <!-- This is the persistent repository to store aggregated messages
+    <bean id="myRepoCache" class="org.apache.camel.component.cache.CacheComponent">
+      <property name="configurationFile" value="classpath:ehcache-repo.xml"/>
+    </bean>-->
+
+    <!--http://sp1/cse82_reg/ws/MeasurerCargo - живая база-->
+    <!--http://web.cse.ru/cse82_reg/ws/MeasurerCargo - новая живая база-->
+    <!--http://lk-test.cse.ru/cargo3_test/ws/MeasurerCargo - общая тестовая-->
+
+    <!--http://lk-test.cse.ru/cargo3_test/ws/SorterExchange - общая тестовая-->
+    <!--http://sp1/cse82_reg/ws/SorterExchange       - живая база-->
+<!--    http://sp1/cse82_reg/ws/SorterExchangePlanning?wsdl-->
+    <!--http://web.cse.ru/cse82_reg/ws/SorterExchange - новая живая база -->
+    <!-- adress = "http://localhost/Cargo3/ws/SorterExchangePlanning"-->
+    <!--WORK ADRESS address = "http://sp1/cse82_reg/ws/SorterExchangePlanning"   "http://sp1/cse82_reg/ws/MeasurerCargoPlanning"-->
+
+    <camelcxf:cxfEndpoint id="reportIncident"
+
+                            address = "http://sp1/cse82_reg/ws/SorterExchangePlanning"
+                          serviceClass="ru.cse.APILk.Service1c.SorterExchangePlanningPortType"
+
+                          serviceName="ws:SorterExchangePlanning"
+                          endpointName="ws:SorterExchangePlanningSoap12"
+                          xmlns:ws="http://www.cse-cargo.ru/client"
+                          loggingFeatureEnabled="true">
+        <camelcxf:properties>
+            <entry key="dataFormat" value="PAYLOAD"/>
+           <entry key="username" value="SorterTomilino"/>
+            <entry key="password" value="Tomilino1"/>
+        </camelcxf:properties>        
+    </camelcxf:cxfEndpoint>
+
+    <!--serviceClass="ru.cse.Meashuring.Service1c.MeasurerCargoPortType" -->
+
+    <camelcxf:cxfEndpoint id="MeashurementIncident"
+                          address = "http://sp1/cse82_reg/ws/MeasurerCargoPlanning"
+                          serviceClass="ru.cse.Meashuring.Service1c.MeasurerCargoPlanningPortType"
+                           serviceName="ws:MeasurerCargoPlanning"
+                           endpointName="ws:MeasurerCargoPlanningSoap12"
+                           xmlns:ws="http://www.cse-cargo.ru/MeasurerCargo"
+                           loggingFeatureEnabled="true">
+        <camelcxf:properties>
+            <entry key="dataFormat" value="PAYLOAD"/>
+            <entry key="username" value="SorterTomilino"/>
+            <entry key="password" value="Tomilino1"/>
+        </camelcxf:properties>          
+    </camelcxf:cxfEndpoint>
+        
+    <!-- Мой адресс для теста address = "http://web.cse.ru/cse82_AlexSt/ws/SorterExchange"-->
+    <!-- Не мой адресс для теста address = "http://web.cse.ru/cse8_bsp/ws/SorterExchange"-->
+    <!-- Общая тестовая база = http://lk-test.cse.ru/cargo3_test/ws/SorterExchange -->
+    <!--tcp://localhost:61616 -->
+
+    <camelContext id="Sorter" xmlns="http://camel.apache.org/schema/blueprint" streamCache="true"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://camel.apache.org/schema/blueprint ">
+
+        <routeBuilder ref="ProxySorterBuilder"/>
+
+    </camelContext>
+
+    <camelContext id="CommunicationWith1C" xmlns="http://camel.apache.org/schema/blueprint" streamCache="true"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://camel.apache.org/schema/blueprint ">
+
+        <routeBuilder ref="ProxySorterBuilderActiveMQ"/>
+
+    </camelContext>
+
+    <cm:property-placeholder persistent-id="org.apache.servicemix.property.cfg">
+        <cm:default-properties>
+            <!--10.0.1.39-->
+            <cm:property name="portNumber" value ="0.0.0.0"/>
+        </cm:default-properties>
+    </cm:property-placeholder>
+
+    <bean id="activemq" class = "org.apache.activemq.camel.component.ActiveMQComponent">
+        <property name="connectionFactory">
+            <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+               <property name="brokerURL" value="vm://amq-broker?broker.persistent=true"/>
+               <property name="userName" value="karaf" />
+                <property name="password" value="karaf" />
+                <property name="trustedPackages">
+                    <list>
+                        <value>ru.cse.proxysorter.Message</value>
+                    </list>
+                </property>
+            </bean>
+        </property>
+    </bean>
+
+<!--    <bean id="camelTracer" class="org.apache.camel.processor.interceptor.Tracer">-->
+<!--        <property name="logName" value="camelTracer"/>-->
+<!--    </bean>-->
+
+
+</blueprint>
